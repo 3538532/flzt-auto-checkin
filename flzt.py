@@ -1,8 +1,18 @@
 import requests
-import json
 from notification import ServerChanNotification
 from env import EMAIL, PASSWORD, LOGIN_URL, USER_INFO_URL, CONVERT_TRAFFIC_URL, CHECK_IN_URL
 from loguru import logger
+
+
+def format_traffic(traffic, s='MB'):
+    if s == 'KB':
+        return str(round(traffic / 1024, 2)) + 'KB'
+    elif s == 'MB':
+        return str(round(traffic / 1024 / 1024, 2)) + 'MB'
+    elif s == 'GB':
+        return str(round(traffic / 1024 / 1024 / 1024, 2)) + 'GB'
+    else:
+        return str(traffic)
 
 
 class FLZT:
@@ -19,7 +29,7 @@ class FLZT:
         try:
             r = self.s.post(url=LOGIN_URL, data={
                 'email': self.email, 'password': self.password})
-            data = json.loads(r.text)
+            data = r.json()
             token = data['data']['auth_data']
             self.s.headers.update({'Authorization': token})
             logger.info('登录成功')
@@ -29,7 +39,7 @@ class FLZT:
         # 签到
         try:
             r = self.s.get(url=CHECK_IN_URL)
-            logger.info(f'签到成功：{r.text}')
+            logger.info(f'签到成功：{r.json()}')
         except Exception as e:
             logger.error('签到失败', e)
             return
@@ -37,9 +47,9 @@ class FLZT:
         # 获取用户信息
         try:
             r = self.s.get(url=USER_INFO_URL)
-            data = json.loads(r.text)
+            data = r.json()
             traffic = int(data['data']['checkin_reward_traffic'])
-            logger.info(f'获取用户信息成功，剩余签到流量：{traffic}')
+            logger.info(f'获取用户信息成功，剩余签到流量：{format_traffic(traffic)}')
         except Exception as e:
             logger.error('获取用户信息失败', e)
             return
@@ -47,9 +57,10 @@ class FLZT:
         try:
             r = self.s.post(url=CONVERT_TRAFFIC_URL,
                             data={'transfer': traffic})
-            logger.info(f'转换流量: {r.text}')
+            logger.info(f'转换流量: {r.json()}')
         except Exception as e:
             logger.error('转换流量失败', e)
+            return
         notification = ServerChanNotification(
-            title='FLZT签到', content=f'签到成功，剩余签到流量：{traffic}')
+            title='FLZT签到', content=f'签到流量转换成功，已转换的签到流量：{format_traffic(traffic)}')
         notification.notify()
