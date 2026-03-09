@@ -51,7 +51,7 @@ def get_user_info(url, token):
         return None
 
 
-def convert_traffic(url, token, traffic):
+#def convert_traffic(url, token, traffic):
     headers['Access-Token'] = token
     params = {
         'traffic': str(traffic)
